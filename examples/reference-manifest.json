@@ -1,0 +1,66 @@
+{
+  "namespace": "timemark",
+  "photos": "photos/",
+  "photosheet": "Photosheet_2026-08-26_to_2026-09-01.xlsx",
+  "template_fields": [
+    "Item No",
+    "Item Description",
+    "UTM band",
+    "Storage ID",
+    "WMS"
+  ],
+  "counts": {
+    "images": 3,
+    "photosheet_rows": 3,
+    "joined": 3,
+    "images_without_a_row": 0,
+    "rows_without_an_image": 0,
+    "conflicting_values": 0
+  },
+  "images_without_a_row": [],
+  "rows_without_an_image": [],
+  "records": [
+    {
+      "image": "photos/2026-09-01 14.12.23__(Test! )_(Item No-2)_(Item Description-Flip flops).jpg",
+      "timestamp": "2026-09-01 14:12:23",
+      "fields": {
+        "Item No": "2",
+        "Item Description": "Flip flops"
+      },
+      "tags": [
+        "Test!"
+      ],
+      "source": "filename+photosheet",
+      "photosheet_row": 4,
+      "conflicts": {}
+    },
+    {
+      "image": "photos/2026-09-01 14.12.42__(Test! )_(Item No-3)_(Item Description-Spray bottle).jpg",
+      "timestamp": "2026-09-01 14:12:42",
+      "fields": {
+        "Item No": "3",
+        "Item Description": "Spray bottle"
+      },
+      "tags": [
+        "Test!"
+      ],
+      "source": "filename+photosheet",
+      "photosheet_row": 3,
+      "conflicts": {}
+    },
+    {
+      "image": "photos/2026-09-01 14.14.23__(Test! )_(Item No-1)_(Item Description-Penguin).jpg",
+      "timestamp": "2026-09-01 14:14:23",
+      "fields": {
+        "Item No": "1",
+        "Item Description": "Penguin"
+      },
+      "tags": [
+        "Test!"
+      ],
+      "source": "filename+photosheet",
+      "photosheet_row": 2,
+      "conflicts": {}
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "name": "timemark",
+  "version": "0.1.0",
+  "description": "Handle exports from Timemark (Android stamp camera, com.oceangalaxy.camera.new). Encodes what each of its four export routes preserves and what it destroys: only the photo ZIP carries full-resolution originals, only the XLSX photosheet carries custom field values as structured columns, and neither carries both - so a usable ingest is always a join of two exports. Parses the filename encoding, reads the photosheet including its out-of-order image anchors, and merges the two into JSON sidecars or embedded XMP.",
+  "author": {
+    "name": "Daniel Rosehill",
+    "url": "https://github.com/danielrosehill"
+  },
+  "repository": "https://github.com/danielrosehill/Claude-Timemark-Plugin",
+  "license": "MIT",
+  "keywords": [
+    "timemark",
+    "stamp-camera",
+    "photo-metadata",
+    "exif",
+    "xmp",
+    "sidecar",
+    "field-capture",
+    "inventory-photography",
+    "xlsx",
+    "android"
+  ]
+}
