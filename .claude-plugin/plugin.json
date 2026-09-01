@@ -1,7 +1,7 @@
 {
   "name": "timemark",
   "version": "0.1.0",
-  "description": "Handle exports from Timemark (Android stamp camera, com.oceangalaxy.camera.new). Encodes what each of its four export routes preserves and what it destroys: only the photo ZIP carries full-resolution originals, only the XLSX photosheet carries custom field values as structured columns, and neither carries both - so a usable ingest is always a join of two exports. Parses the filename encoding, reads the photosheet including its out-of-order image anchors, and merges the two into JSON sidecars or embedded XMP.",
+  "description": "Import Timemark stamp-camera photo sets, working around the fact that no Timemark export carries both the full-resolution image and the field values. Gates the import on having both the originals and the Photosheet XLSX, joins them on capture timestamp, then either burns the values into the files as XMP or builds a self-contained archive of images, JSON sidecars and an index.",
   "author": {
     "name": "Daniel Rosehill",
     "url": "https://github.com/danielrosehill"

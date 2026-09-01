@@ -1,6 +1,8 @@
 # Timemark export formats — measured teardown
 
-Timemark v10.0.210, Android, `com.oceangalaxy.camera.new`. Measured 2026-09-01
+Timemark v10.0.210, Android, `com.oceangalaxy.camera.new`. There are three
+things it will give you — the images, an XLSX and a PDF — and none of them holds
+both the pixels and the data. Measured 2026-09-01
 against a 3-frame reference export shot on a OnePlus CPH2493, using exiftool
 13.50, poppler-utils and ImageMagick. Everything below is **confirmed by
 measurement** unless marked *inferred*.
@@ -17,7 +19,7 @@ Timemark_Test/
 ├── Exports/
 │   ├── Photos_from_Timemark_01_09_2026.zip           3.6 MB, 3 JPEGs
 │   ├── Photosheet_2026-08-26_to_2026-09-01.xlsx       76 KB
-│   └── Work Report_09_01_2026_Daniel Rosehill.pdf    276 KB
+│   └── Work Report_09_01_2026_<name>.pdf           276 KB
 └── Raw_Photos/                                        3 JPEGs, 1920x2560, ~1.2 MB each
 ```
 
@@ -25,17 +27,20 @@ Template in use: 8 fields (`Item No`, `Item Description`, `UTM band`,
 `Storage ID`, `WMS`, plus the built-in `Photo`/`Date`/`Time`), of which two were
 filled, and one tag (`Test!`).
 
-## Route 1 — photo ZIP
+## The images (and the ZIP that bundles them)
 
 `Photos_from_Timemark_DD_MM_YYYY.zip`. Flat, no directory structure, no manifest.
 
-**Byte-identical to the files on the phone.** MD5s of all three entries matched
-`Raw_Photos/` exactly. Not a re-encode, no metadata stripping. This is the only
-route that yields full-resolution pixels.
+**The ZIP is a delivery mechanism, not a format.** Three JPEGs, flat, no
+manifest, no sidecar, no directory entries — and every MD5 matched the raw file
+on the phone exactly. It adds nothing over copying the photos off yourself, so
+treat "the images" and "the ZIP" as the same input. It is worth confirming only
+because it proves Timemark does not re-encode on the way out.
 
-Field values travel only as filename text.
+This is the only source of full-resolution pixels. Field values travel with it
+solely as filename text.
 
-## Route 2 — Photosheet XLSX
+## Photosheet XLSX
 
 `Photosheet_<from>_to_<to>.xlsx`. A genuine OOXML workbook (`Application:
 Microsoft Excel`, `AppVersion 16.0300`), two sheets: `Photos` and `Data summary`.
@@ -92,7 +97,7 @@ have mislabelled all three.
 720x960 (originals are 1920x2560), 18–26 KB (originals ~1.2 MB) — roughly 2% of
 the original bytes. Adequate for a visual check, not for an archive.
 
-## Route 3 — Work Report PDF
+## Work Report PDF
 
 `Work Report_<MM_DD_YYYY>_<name>.pdf`. Cover page plus one photo per page with a
 field table.
@@ -217,7 +222,7 @@ Exit code 0. No stderr. Nothing written. `-m` does not help — it suppresses mi
 );
 %Image::ExifTool::UserDefined::timemark = (
     GROUPS    => { 0 => 'XMP', 1 => 'XMP-timemark', 2 => 'Image' },
-    NAMESPACE => { 'timemark' => 'http://ns.danielrosehill.com/timemark/1.0/' },
+    NAMESPACE => { 'timemark' => 'http://ns.timemark-plugin.org/timemark/1.0/' },
     WRITABLE  => 'string',
     ItemNo => { Name => 'ItemNo' },
 );
@@ -232,9 +237,10 @@ tags read back on any machine **without** the config file.
 Confirmed after a write: pixels bit-identical (`compare -metric AE` = 0) and the
 `UserComment` blob untouched.
 
-## What the earlier teardown got wrong
+## What an earlier photos-only teardown got wrong
 
-The 2026-09-01 photos-only teardown concluded the custom fields were
+An earlier teardown of the same date, working from the image files alone,
+concluded the custom fields were
 "preserved in the file and useless to you", and that the filename was "the only
 machine-readable copy". Both statements are true **of the image file** and led to
 a false conclusion **about the app**: that Timemark data is unrecoverable and
@@ -242,7 +248,8 @@ that template definitions cannot be got out at all.
 
 The error was scoping the investigation to the artefact in hand. The photos were
 what had been shared, so the photos were what got examined; the app's own export
-menu was never exercised. The photosheet XLSX answers both questions — structured
+menu was never exercised. If you arrive at this repo from a set of Timemark
+photos, that is the trap to avoid — ask for the photosheet. The photosheet XLSX answers both questions — structured
 per-photo values, and a header row that enumerates the template's fields.
 
 The generalisable form: when a conclusion is "this data is unrecoverable",

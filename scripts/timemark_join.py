@@ -1,24 +1,24 @@
 #!/usr/bin/env python3
-"""Join a Timemark photo ZIP (full-resolution images) to a Timemark photosheet
-XLSX (structured field values) and emit one JSON sidecar per image.
+"""Join Timemark original images to a Timemark photosheet XLSX.
+
+This is the engine both output skills sit on: burn-in writes the joined values
+into the images, archive writes them into a self-describing bundle.
 
 No single Timemark export carries both the pixels and the data:
 
-    photo ZIP   full-res originals, byte-identical to the phone; values only
-                as filename text
+    originals   full-res, values only as filename text (a Photos_from_Timemark
+                ZIP is just these bundled - byte-identical, adds nothing)
     XLSX        values as real columns, plus 720x960 thumbnails
     PDF         values as prose, 617x823 images, time truncated to the minute
 
-So ingest is always a join. The join key is the capture timestamp to the second,
-which the ZIP carries in the filename and the XLSX carries as Date + Time. The
+So import is always a join. The join key is the capture timestamp to the second,
+which the images carry in the filename and the XLSX carries as Date + Time. The
 PDF cannot participate: it drops the seconds.
-
-Writes IMG.jpg.json beside IMG.jpg (the Google Takeout convention, which exiftool
-can merge straight into tags) plus a manifest.
 """
 import argparse
 import json
 import os
+import hashlib
 import subprocess
 import tempfile
 import sys
@@ -28,6 +28,18 @@ from timemark_filename import parse as parse_filename          # noqa: E402
 from timemark_photosheet import read as read_photosheet        # noqa: E402
 
 IMG_EXT = (".jpg", ".jpeg", ".png")
+
+# Any URI works - it is an identifier, not an address, and nothing
+# dereferences it. Override with --xmp-uri to use a namespace you own.
+DEFAULT_XMP_URI = "http://ns.timemark-plugin.org/timemark/1.0/"
+
+
+def sha256(path, _buf=1 << 20):
+    h = hashlib.sha256()
+    with open(path, "rb") as fh:
+        for chunk in iter(lambda: fh.read(_buf), b""):
+            h.update(chunk)
+    return h.hexdigest()
 
 
 def collect_images(path):
@@ -124,7 +136,7 @@ def _tag_name(field):
 
 
 def write_exiftool_config(fields, dest, namespace="timemark",
-                          uri="http://ns.danielrosehill.com/timemark/1.0/"):
+                          uri=DEFAULT_XMP_URI):
     """Generate an ExifTool config declaring one XMP tag per template field.
 
     This step is not optional. exiftool silently refuses to write an XMP tag it
@@ -159,7 +171,7 @@ def write_exiftool_config(fields, dest, namespace="timemark",
     return dest
 
 
-def embed_xmp(manifest, dry_run=False):
+def embed_xmp(manifest, dry_run=False, uri=DEFAULT_XMP_URI):
     """Write field values into XMP under a custom namespace, via exiftool.
 
     XMP is the right target: it is XML and takes arbitrary namespaces, so a
@@ -173,7 +185,7 @@ def embed_xmp(manifest, dry_run=False):
         return {"skipped": "no fields to write"}
 
     cfg = os.path.join(tempfile.mkdtemp(prefix="timemark-"), "timemark.ExifTool_config")
-    write_exiftool_config(all_fields, cfg, namespace=ns)
+    write_exiftool_config(all_fields, cfg, namespace=ns, uri=uri)
 
     results = []
     for rec in manifest["records"]:
@@ -200,7 +212,7 @@ def embed_xmp(manifest, dry_run=False):
             "tags_expected": len(rec["fields"]),
             "stderr": proc.stderr.strip(),
         })
-    return {"config": cfg, "namespace": ns, "results": results}
+    return {"config": cfg, "namespace": ns, "uri": uri, "results": results}
 
 
 def main():
@@ -211,6 +223,8 @@ def main():
     ap.add_argument("--sidecars", action="store_true", help="write IMG.jpg.json beside each image")
     ap.add_argument("--embed-xmp", action="store_true", help="write fields into XMP with exiftool")
     ap.add_argument("--dry-run", action="store_true", help="with --embed-xmp, print commands only")
+    ap.add_argument("--xmp-uri", default=DEFAULT_XMP_URI,
+                    help="XMP namespace URI to write under (default: %(default)s)")
     ap.add_argument("--manifest", help="write the full manifest here")
     args = ap.parse_args()
 
@@ -218,7 +232,7 @@ def main():
     if args.sidecars:
         manifest["sidecars_written"] = write_sidecars(manifest)
     if args.embed_xmp:
-        manifest["xmp"] = embed_xmp(manifest, args.dry_run)
+        manifest["xmp"] = embed_xmp(manifest, args.dry_run, args.xmp_uri)
     if args.manifest:
         with open(args.manifest, "w", encoding="utf-8") as fh:
             json.dump(manifest, fh, indent=2, ensure_ascii=False)

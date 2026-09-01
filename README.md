@@ -1,80 +1,79 @@
-# Claude Timemark Plugin
+# Timemark Plugin
 
-Handle exports from **Timemark** (Android stamp camera,
-`com.oceangalaxy.camera.new`) without losing either the pixels or the data.
+Import photo sets from **Timemark** (Android stamp camera,
+`com.oceangalaxy.camera.new`) without losing either the pixels or the data —
+and work around the fact that Timemark will not give you both.
 
-## The one thing to know
+## The problem this exists for
 
-**No single Timemark export preserves both the full-resolution image and the
-field values.**
+**No Timemark export preserves the full-resolution image and the field values
+together.**
 
-| Route | Full-res image | Field values | Tags |
+| Input | Full-res pixels | Field values | Tags |
 |---|---|---|---|
-| Photo ZIP | **yes — byte-identical** | filename text only | filename text |
-| Photosheet XLSX | no — 720x960 thumbs | **yes — real columns** | **no** |
-| Work Report PDF | no — 617x823 | prose, **time cut to the minute** | yes |
+| **Original images** (a `Photos_from_Timemark` ZIP is just these bundled, byte-identical) | **yes** | filename text only | **filename only** |
+| **Photosheet XLSX** | no — 720×960, ~2% of the bytes | **yes, as real columns** | dropped |
+| **Work Report PDF** | no — 617×823 | prose, **time cut to the minute** | yes |
 
-So a usable ingest is always a **join of two exports** — the photo ZIP for
-pixels, the photosheet XLSX for values, joined on the capture timestamp to the
-second. Ask the phone for both, over the same date range. The PDF cannot
-participate: it drops the seconds.
+So an import is a reconstruction: the **images and the photosheet, joined on the
+capture timestamp to the second**. The PDF can never participate — it drops the
+seconds, so two frames from the same minute are indistinguishable.
 
-## Install
+The practical consequence, and the reason the first skill is a gate: if only half
+the export arrives, the other half is **not recoverable later** from what you
+have, and the photos usually get cleared off the phone.
 
-```
-/plugin marketplace add danielrosehill/Claude-Code-Plugins-Private
-/plugin install timemark@danielrosehill-private
-```
+## Skills
+
+| Skill | Does |
+|---|---|
+| `timemark-import` | the gate — verify **both** halves are present, then join. Run first, always |
+| `timemark-burn-in` | write the values into the images as XMP, so each photo is self-describing |
+| `timemark-archive` | build a self-contained bundle: full images + JSON sidecars + an index |
+
+Burn-in and archive are complementary, not alternatives.
 
 ## Use
 
-```bash
-unzip -q Photos_from_Timemark_01_09_2026.zip -d photos/
-
-python3 scripts/timemark_ingest.py photos/ \
-  --photosheet Photosheet_2026-08-26_to_2026-09-01.xlsx \
-  --sidecars --embed-xmp --manifest manifest.json
+```
+/timemark:import ./exports
 ```
 
-Writes `IMG.jpg.json` beside each image (the Google Takeout convention, which
-exiftool can merge straight into tags) and, with `--embed-xmp`, the values into
-a custom XMP namespace so the file is self-describing. Read the `counts` block
-in the manifest before believing the result — a join that matched nothing still
-exits 0.
+Or directly:
 
-Or: `/timemark:ingest <directory>`.
+```bash
+python3 scripts/timemark_archive.py photos/ \
+  --photosheet Photosheet_2026-08-26_to_2026-09-01.xlsx \
+  --out inventory-2026-09-01 --embed-xmp --zip
+```
 
-## Contents
+Producing `timemark-archive/1`:
 
-| Path | What |
-|---|---|
-| `skills/timemark-export-triage/` | which route to ask for, and what each destroys |
-| `skills/timemark-ingest/` | running the join, and reading the counts |
-| `commands/ingest.md` | `/timemark:ingest` |
-| `scripts/timemark_filename.py` | filename encoding → JSON |
-| `scripts/timemark_photosheet.py` | XLSX → rows + correctly anchored thumbnails |
-| `scripts/timemark_ingest.py` | the join, sidecars, XMP embed |
-| `reference/export-formats.md` | full measured teardown |
-| `examples/` | reference manifest and photosheet fragments |
+```
+inventory-2026-09-01/
+├── index.json          every record: image path, values, tags, sha256, provenance
+├── README.md           generated — explains the format to whoever opens it
+└── images/
+    ├── <original filename>.jpg        full resolution, untouched, unrenamed
+    └── <original filename>.jpg.json   sidecar, Google Takeout convention
+```
 
-Scripts are stdlib-only Python 3 (no `openpyxl`). `--embed-xmp` needs `exiftool`.
+Scripts are stdlib-only Python 3 — no `openpyxl`. XMP embedding needs `exiftool`.
 
-## Traps this exists to avoid
+## Traps this handles for you
 
+- **exiftool silently drops undeclared XMP tags.** `-XMP-xmp:ItemNo=1` exits 0,
+  prints nothing, writes nothing. Custom fields need a generated `-config`, so
+  the plugin generates one per export and reads the tags back to confirm.
 - **XLSX images are not in row order.** `xl/media/imageN.jpg` numbering is
-  unrelated to data rows; the real mapping is in `xl/drawings/drawing1.xml`.
-  Index-order zipping attaches the wrong photo to every row, silently.
-- **exiftool silently drops undeclared XMP tags.** `-XMP-xmp:ItemNo=1` exits 0
-  and writes nothing. Custom fields need a generated `-config`.
-- **GPS is written zeroed, not omitted, when location is off** — testing for tag
+  unrelated to data rows — the real mapping is the anchors in
+  `xl/drawings/drawing1.xml`. Index-order zipping mislabels every photo, silently.
+- **Filenames must be preserved verbatim.** Tags exist *only* there, and the
+  timestamp is the join key.
+- **GPS is written zeroed, not omitted, when location was off** — testing for tag
   presence puts every frame on Null Island.
 - **`OffsetTimeOriginal` ignores DST**, so UTC conversion off it is an hour out.
-- **Filenames must be preserved verbatim.** Tags exist *only* there — the
-  photosheet drops them — and the timestamp is the join key.
+- **`UserComment` is a 5–7 KB encrypted blob.** The fields are in there and are
+  not readable. Don't spend time on it.
 
-Full detail and measurements: [reference/export-formats.md](reference/export-formats.md).
-
-## Related
-
-- [`Field-Photo-Metadata-Capture`](https://github.com/danielrosehill/Field-Photo-Metadata-Capture)
-  — the capture-app selection research this came out of.
+Full measurements: [reference/export-formats.md](reference/export-formats.md).
